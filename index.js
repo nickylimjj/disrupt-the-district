@@ -14,10 +14,18 @@ var personality_insights = new PersonalityInsightsV3({
   version_date: '2016-10-20'
 });
 
+// set input json tweet files
+if (process.argv[2] !== undefined) {
+  var profile = './'+process.argv[2]+'.json'
+}
+else {
+  var profile = './profile.json'
+}
+
 // params for request to IBM personality
 var params = {
   // Get the content items from the JSON file.
-  content_items: require('./profile.json').contentItems,
+  content_items: require(profile).contentItems,
   consumption_preferences: true,
   raw_scores: true,
   headers: {
