@@ -16,7 +16,7 @@ def bayesClassifier(data,pi,means,cov):
 
 
 def classifierError(truelabels,estimatedlabels):
-    return (truelabels != estimatedlabels).sum() / estimatedlabels.size
+    return (truelabels.T != estimatedlabels).sum() / estimatedlabels.size
 
 def trainLDA(trainfeat,trainlabel):
     nlabels=int(trainlabel.max())+1 #Assuming all labels up to nlabels exist.

@@ -47,13 +47,17 @@ def main(argv):
 
     profile['contentItems'] = tweets
 
-    
+    if (len(profile['contentItems']) == 0):
+        print '[*] invalid username'
+        return 2
+
     f = open(outputfile, 'w')
 
     f.write( json.dumps(profile, ensure_ascii=True) )
     f.close()
 
-    print "file created with", "numTweets = ", len(tweets)
+    print username+".json created with", "numTweets = ", len(tweets)
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
