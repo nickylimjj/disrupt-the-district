@@ -24,6 +24,13 @@ import mlclassify as ml
 import time
 import gendata as gd
 
+from sklearn.naive_bayes import BernoulliNB 
+from sklearn.naive_bayes import MultinomialNB 
+from sklearn.svm import LinearSVC 
+from sklearn.linear_model import LogisticRegression 
+from sklearn.neighbors import KNeighborsClassifier 
+from sklearn.svm import SVC
+
 def main(argv):
     # seed the RNG for repeatability
     np.random.seed(seed=61801) 
@@ -50,6 +57,7 @@ def main(argv):
 
     # N x (22) data array
     feat_data = np.zeros((N, dim))
+    data_person_names = ['0']*N
     feat_names = ['0']*dim
     label_names = ['0']*M
     label_data = np.zeros((N,1))
@@ -62,6 +70,11 @@ def main(argv):
         labelled_personalities = np.asarray(labelled_personalities)
 
         for idx, f in enumerate (labelled_personalities):
+
+            # get feature name of each feature
+            name = f.split("/")[3].split("-")[0][1:]
+            data_person_names[file_idx] = name
+
             with open(f) as f:
                 entry = np.zeros(dim)
                 item = json.load(f)
@@ -79,16 +92,15 @@ def main(argv):
 
                         dim_idx += 1
 
-
                 feat_data[file_idx] = entry.T
 
                 label_data[file_idx] = i
                 file_idx += 1;
                 #pprint(item['personality'])
 
-
     # Randomly permute the files we have
     idx=np.random.permutation(N)
+    data_person_names_map = idx
     feat_data = feat_data[idx]
     label_data = label_data[idx]
 
@@ -125,9 +137,7 @@ def main(argv):
     print "test data size = ", testdata.shape[0], \
         '(',round(testdata.shape[0] / N * 100, 0), '% )'
 
-    # run k-means clustering algorithm
-    # (predicted_labels, centers) = kMeans(data, K=5, niter=100)
-
+    # run classifiers
     for algo in ['brute','ball_tree','kd_tree']:
         start = time.time()
         predict = neighbors.KNeighborsClassifier(algorithm=algo, p=2).fit(traindata, np.ravel(trainlabels)).predict(valdata)
@@ -140,11 +150,39 @@ def main(argv):
     err = ml.classifierError(vallabels, predict)
     end = time.time()
     print 'LDA \t: runtime', round(end-start, 3), 's error = ', err*100, '%'
-    return (LDA().fit(traindata, np.ravel(trainlabels)), label_names)
 
-# pick LDA (change to lowest err)
+    funcdict = {
+    'BernoulliNB': BernoulliNB,
+    'MultinomialNB': MultinomialNB,
+    'LinearSVC': LinearSVC,
+    'LogisticRegression': LogisticRegression,
+    'KNeighborsClassifier': KNeighborsClassifier
+    }
+
+    for key in funcdict:
+        start = time.time()
+        predicted_labels = funcdict[key]().fit(traindata, trainlabels).predict(traindata)
+        end = time.time()
+        err = ml.classifierError(trainlabels, predicted_labels)
+
+        print key, ': runtime', round(end-start, 3), 's error = ', err*100, '%'
+        print '----'
+
+    # run k-means clustering algorithm
+    (predicted_joblabels, centers) = kMeans(traindata, K=5, niter=100)
+
+    # pick LinearSVC (change to lowest err)
+    return (LinearSVC().fit(traindata, np.ravel(trainlabels)), 
+        label_names,
+        LinearSVC().fit(traindata, np.ravel(predicted_joblabels)),
+        predicted_joblabels,
+        data_person_names,
+        data_person_names_map
+        )
+
+
 def ML_model(username):
-    (model, labels) = main(sys.argv[1:])
+    (model_cfy, labels_city, model_clus, pred_joblabels, data_person_names, data_person_names_map) = main(sys.argv[1:])
     err = gd.gendata('Unknown', username)
 
     print err
@@ -171,8 +209,11 @@ def ML_model(username):
             for j, val in enumerate(item[cat]):
                 feature[dim_idx] = item[cat][j]['percentile']
 
-    print model.predict(feature.T)[0]
-    return labels[int(model.predict(feature.T)[0])]
+    job_group = []
+    for i, v in enumerate(pred_joblabels):
+        if v == int(model_clus.predict(feature.T)[0]):
+            job_group.append(data_person_names[data_person_names_map[i]])
+    return labels_city[int(model_cfy.predict(feature.T)[0])],'doing', job_group
 
 if __name__ == "__main__":
     main(sys.argv[1:])
