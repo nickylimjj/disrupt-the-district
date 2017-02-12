@@ -23,6 +23,8 @@ from mlcluster import kMeans
 import mlclassify as ml
 import time
 import gendata as gd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import cross_val_score
 
 from sklearn.naive_bayes import BernoulliNB 
 from sklearn.naive_bayes import MultinomialNB 
@@ -30,6 +32,7 @@ from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression 
 from sklearn.neighbors import KNeighborsClassifier 
 from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 
 def main(argv):
     # seed the RNG for repeatability
@@ -37,14 +40,7 @@ def main(argv):
 
     # Load up some data, which we will store in a variable called problem1
     print 'loading dataset...'
-    labels = glob.glob('./data/*')
-
-    # remove label
-    for index, item in enumerate(labels):
-        if labels[index] == './data/Unknown':
-            bad_idx = index
-    labels.pop(bad_idx)
-
+    labels = glob.glob('./data/[!Unknown]*')
     personalities = glob.glob('./data/[!Unknown]*/*-pers*')
 
     fnames = np.asarray(personalities)
@@ -54,14 +50,18 @@ def main(argv):
     dim  = 22           # number of dimensions
     print '... data loaded'
     print 'number of personalities files = ', N
+    print 'number of cities = ', M
 
     # N x (22) data array
     feat_data = np.zeros((N, dim))
+    label_data = np.zeros((N,1))
+
     data_person_names = ['0']*N
     feat_names = ['0']*dim
     label_names = ['0']*M
-    label_data = np.zeros((N,1))
-
+    label_avg = np.zeros((M,dim))
+    label_std = np.zeros((M,dim))
+    
     file_idx = 0    # 0 - (N-1)
 
     for i, dir in enumerate(labels):
@@ -69,22 +69,22 @@ def main(argv):
         labelled_personalities =  glob.glob(dir + '/*-pers*')
         labelled_personalities = np.asarray(labelled_personalities)
 
+        start_file_idx = file_idx
         for idx, f in enumerate (labelled_personalities):
-
             # get feature name of each feature
             name = f.split("/")[3].split("-")[0][1:]
             data_person_names[file_idx] = name
 
-            print f
+            # each personalities file
             with open(f) as f:
                 entry = np.zeros(dim)
                 item = json.load(f)
 
                 # process JSON to np array
                 category = ['personality','needs','values']
-                #category = ['personality']
                 dim_idx = 0     # 0 - (dim-1)
 
+                # over dimension
                 for cat in category:
                     for j, val in enumerate(item[cat]):
                         entry[dim_idx] = item[cat][j]['percentile']
@@ -98,7 +98,10 @@ def main(argv):
                 label_data[file_idx] = i
                 file_idx += 1;
                 #pprint(item['personality'])
+        label_avg[i] = feat_data[start_file_idx:file_idx,:].mean(axis=0).T
+        label_std[i] = feat_data[start_file_idx:file_idx,:].std(axis=0).T
 
+    # get average of each city
     # Randomly permute the files we have
     idx=np.random.permutation(N)
     feat_data = feat_data[idx]
@@ -112,9 +115,11 @@ def main(argv):
     print "label data shape = ", label_data.shape
     print "label_names\n\t", label_names
     print "feature names\n\t", feat_names
+    print "label averages\n\t", label_avg
+    print "label std\n\t", label_std
 
     # break data into sets ()
-    val_index = int(feat_data.shape[0] / 10 * 7)
+    val_index = int(feat_data.shape[0] / 10 * 7.5)
     test_index = int(feat_data.shape[0] / 10 * 10)
     
     traindata = feat_data[:val_index]
@@ -151,7 +156,8 @@ def main(argv):
     'MultinomialNB': MultinomialNB,
     'LinearSVC': LinearSVC,
     'LogisticRegression': LogisticRegression,
-    'KNeighborsClassifier': KNeighborsClassifier
+    'KNeighborsClassifier': KNeighborsClassifier,
+    'DecisionTreeClassifier': DecisionTreeClassifier
     }
 
     for key in funcdict:
@@ -163,27 +169,30 @@ def main(argv):
 
         print key, ': runtime', round(end-start, 3), 's error = ', err*100, '%'
         print '----'
-
    
-    # pick LinearSVC (change to lowest err)
+    # pick the one with lowest error
     chosen = np.argmin(errors)
     func = [
+    LDA,
     BernoulliNB,
     MultinomialNB,
     LinearSVC,
     LogisticRegression,
-    KNeighborsClassifier
+    KNeighborsClassifier,
+    DecisionTreeClassifier
     ]
 
     print 'we choose',func[chosen],'with err = ', errors[chosen]*100,'%'
 
     return (func[chosen]().fit(traindata, np.ravel(trainlabels)), 
-        label_names)
+        label_names,
+        label_avg,
+        label_std)
 
 
 # FUNCTION FOR mlmatch.py
 def ML_model(username):
-    (model_cfy, labels_city) = main(sys.argv[1:])
+    (model_cfy, labels_city, label_avg, label_std) = main(sys.argv[1:])
     gd.gendata('Unknown', username)
 
     # GENERATE FEATURE
@@ -205,8 +214,30 @@ def ML_model(username):
                 feature[dim_idx] = item[cat][j]['percentile']
                 dim_idx += 1
 
-    print feature.T
-    return labels_city[int(model_cfy.predict(feature.T)[0])]
+    print 'feature\n\t:',feature.T
+    idx = int(model_cfy.predict(feature.T)[0])
+    distances = np.array(dist.cdist(feature.T,label_avg,'euclidean'))
+    V = np.argsort(distances)
+    print V[0]
+    print distances
+    rank = ['0']*len(labels_city)
+    
+    for i, val in enumerate(rank):
+        rank[i] = labels_city[V[0,i]]
+    print rank
+
+    ret_dict = {}
+    ret_dict['handle'] = username
+    ret_dict['mlrecommends'] = labels_city[idx]
+    ret_dict['similarity'] = {}
+    for i, val in enumerate(rank):
+        ret_dict['similarity'][i] = {'city': rank[i], 'similarity-score' : distances[0,V[0,i]]}
+
+    print '>>>>>>>>>>>>>>>>>'
+    ret_json = json.dumps(ret_dict,sort_keys=True)
+    pprint(ret_json)
+    return (ret_json)
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
