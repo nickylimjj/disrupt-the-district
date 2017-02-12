@@ -92,14 +92,15 @@ def main(argv):
     feat_data = feat_data[idx]
     label_data = label_data[idx]
 
+    for i in range(4):
+        print label_names[i],"=",(label_data == i).sum()
+
     print "feature data shape = ", feat_data.shape
     print "label data shape = ", label_data.shape
     print "label_names\n\t", label_names
     print "feature names\n\t", feat_names
 
-    print "feature data\n\t", feat_data[0]
-
-    val_index = int(feat_data.shape[0] / 10 * 5)
+    val_index = int(feat_data.shape[0] / 10 * 7)
     test_index = int(feat_data.shape[0] / 10 * 10)
     # break data into sets (60-20-20)
     traindata = feat_data[:val_index]
@@ -170,6 +171,7 @@ def ML_model(username):
             for j, val in enumerate(item[cat]):
                 feature[dim_idx] = item[cat][j]['percentile']
 
+    print model.predict(feature.T)[0]
     return labels[int(model.predict(feature.T)[0])]
 
 if __name__ == "__main__":
