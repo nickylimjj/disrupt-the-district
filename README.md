@@ -13,6 +13,7 @@ This folder contains the following files
 * twitter.py - this program scraps twitter accounts
     - [usage] ./twitter.py -u <twitter username> -o <outputfilename>
 * data/ - contains folders of twitters accounts with tweets and personality, both stored as json.
+* ml.py - trains personality data to get suitable location
 
 
 This repo ignores
