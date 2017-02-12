@@ -14,6 +14,7 @@ This folder contains the following files
     - [usage] ./twitter.py -u <twitter username> -o <outputfilename>
 * data/ - contains folders of twitters accounts with tweets and personality, both stored as json.
 * ml.py - trains personality data to get suitable location
+* mlmatch.py - run `python mlmatch.py -h` for help
 
 
 This repo ignores
