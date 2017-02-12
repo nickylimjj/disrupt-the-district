@@ -1,0 +1,27 @@
+{
+  "name": "disrupt-the-district",
+  "version": "1.0.0",
+  "description": "A project on helping people stay relevant in a constantly evolving jobspace.",
+  "main": "index.js",
+  "scripts": {
+    "test": "./index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nickylimjj/disrupt-the-district.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nickylimjj/disrupt-the-district/issues"
+  },
+  "homepage": "https://github.com/nickylimjj/disrupt-the-district#readme",
+  "dependencies": {
+    "jsonfile": "latest",
+    "python-shell": "^0.4.0",
+    "request": "latest",
+    "twitter": "^1.7.0",
+    "twitter-screen-scrape": "^1.0.2",
+    "watson-developer-cloud": "latest"
+  }
+}
