@@ -19,5 +19,4 @@ This folder contains the following files
 
 This repo ignores
 * node_modules/
-* data/
 
