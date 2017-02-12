@@ -24,9 +24,16 @@ import mlclassify as ml
 import time
 import gendata as gd
 
+from sklearn.naive_bayes import BernoulliNB 
+from sklearn.naive_bayes import MultinomialNB 
+from sklearn.svm import LinearSVC 
+from sklearn.linear_model import LogisticRegression 
+from sklearn.neighbors import KNeighborsClassifier 
+from sklearn.svm import SVC
+
 def main(argv):
     # seed the RNG for repeatability
-    np.random.seed(seed=61801) 
+    np.random.seed(seed=14282357) 
 
     # Load up some data, which we will store in a variable called problem1
     print 'loading dataset...'
@@ -50,6 +57,7 @@ def main(argv):
 
     # N x (22) data array
     feat_data = np.zeros((N, dim))
+    data_person_names = ['0']*N
     feat_names = ['0']*dim
     label_names = ['0']*M
     label_data = np.zeros((N,1))
@@ -62,6 +70,12 @@ def main(argv):
         labelled_personalities = np.asarray(labelled_personalities)
 
         for idx, f in enumerate (labelled_personalities):
+
+            # get feature name of each feature
+            name = f.split("/")[3].split("-")[0][1:]
+            data_person_names[file_idx] = name
+
+            print f
             with open(f) as f:
                 entry = np.zeros(dim)
                 item = json.load(f)
@@ -79,20 +93,19 @@ def main(argv):
 
                         dim_idx += 1
 
-
                 feat_data[file_idx] = entry.T
 
                 label_data[file_idx] = i
                 file_idx += 1;
                 #pprint(item['personality'])
 
-
     # Randomly permute the files we have
     idx=np.random.permutation(N)
     feat_data = feat_data[idx]
     label_data = label_data[idx]
 
-    for i in range(4):
+    # calculate frequency of each label
+    for i in range(len(label_names)):
         print label_names[i],"=",(label_data == i).sum()
 
     print "feature data shape = ", feat_data.shape
@@ -100,14 +113,17 @@ def main(argv):
     print "label_names\n\t", label_names
     print "feature names\n\t", feat_names
 
+    # break data into sets ()
     val_index = int(feat_data.shape[0] / 10 * 7)
     test_index = int(feat_data.shape[0] / 10 * 10)
-    # break data into sets (60-20-20)
+    
     traindata = feat_data[:val_index]
     trainlabels = label_data[:val_index]
+    print 'trainlabels', trainlabels.T
 
     valdata = feat_data[val_index:test_index]
     vallabels = label_data[val_index:test_index]
+    print 'vallabels', vallabels.T
 
     testdata = feat_data[test_index:]
     testlabels = label_data[test_index:]
@@ -125,33 +141,50 @@ def main(argv):
     print "test data size = ", testdata.shape[0], \
         '(',round(testdata.shape[0] / N * 100, 0), '% )'
 
-    # run k-means clustering algorithm
-    # (predicted_labels, centers) = kMeans(data, K=5, niter=100)
+    # run classifiers
+    errors = []
 
-    for algo in ['brute','ball_tree','kd_tree']:
+
+    funcdict = {
+    'LDA': LDA,
+    'BernoulliNB': BernoulliNB,
+    'MultinomialNB': MultinomialNB,
+    'LinearSVC': LinearSVC,
+    'LogisticRegression': LogisticRegression,
+    'KNeighborsClassifier': KNeighborsClassifier
+    }
+
+    for key in funcdict:
         start = time.time()
-        predict = neighbors.KNeighborsClassifier(algorithm=algo, p=2).fit(traindata, np.ravel(trainlabels)).predict(valdata)
-        err = ml.classifierError(vallabels, predict)
+        predicted_labels = funcdict[key]().fit(traindata, np.ravel(trainlabels)).predict(valdata)
         end = time.time()
-        print algo, ': runtime ', round(end-start, 3), 's\t error = ', err*100, '%'
+        err = ml.classifierError(vallabels, predicted_labels)
+        errors.append(err)
 
-    start = time.time()
-    predict = LDA().fit(traindata, np.ravel(trainlabels)).predict(valdata)
-    err = ml.classifierError(vallabels, predict)
-    end = time.time()
-    print 'LDA \t: runtime', round(end-start, 3), 's error = ', err*100, '%'
-    return (LDA().fit(traindata, np.ravel(trainlabels)), label_names)
+        print key, ': runtime', round(end-start, 3), 's error = ', err*100, '%'
+        print '----'
 
-# pick LDA (change to lowest err)
+   
+    # pick LinearSVC (change to lowest err)
+    chosen = np.argmin(errors)
+    func = [
+    BernoulliNB,
+    MultinomialNB,
+    LinearSVC,
+    LogisticRegression,
+    KNeighborsClassifier
+    ]
+
+    print 'we choose',func[chosen],'with err = ', errors[chosen]*100,'%'
+
+    return (func[chosen]().fit(traindata, np.ravel(trainlabels)), 
+        label_names)
+
+
+# FUNCTION FOR mlmatch.py
 def ML_model(username):
-    (model, labels) = main(sys.argv[1:])
-    err = gd.gendata('Unknown', username)
-
-    print err
-    if (err):
-        print '[*] invalid username'
-        sys.exit(2)
-
+    (model_cfy, labels_city) = main(sys.argv[1:])
+    gd.gendata('Unknown', username)
 
     # GENERATE FEATURE
     filename = './data/Unknown/'+username+'-pers.json'
@@ -170,9 +203,10 @@ def ML_model(username):
         for cat in category:
             for j, val in enumerate(item[cat]):
                 feature[dim_idx] = item[cat][j]['percentile']
+                dim_idx += 1
 
-    print model.predict(feature.T)[0]
-    return labels[int(model.predict(feature.T)[0])]
+    print feature.T
+    return labels_city[int(model_cfy.predict(feature.T)[0])]
 
 if __name__ == "__main__":
     main(sys.argv[1:])

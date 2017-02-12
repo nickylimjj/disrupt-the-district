@@ -12,6 +12,7 @@ def gendata(city, account):
     os.system("mkdir -p data/"+city+"/")
     os.system("mv "+account+".json data/"+city+"/"+account+"-tweets.json")
     os.system("mv "+account+"-pers.json data/"+city+"/"+account+"-pers.json")
+    os.system("touch data/"+city+"/"+account+"-label.txt")
     return
 
 def main(argv):

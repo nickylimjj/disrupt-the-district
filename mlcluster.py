@@ -4,7 +4,7 @@ import random
 from sklearn import neighbors
 import scipy.spatial.distance as dist
 
-def kMeans(data,K,niter):
+def kMeans(data,K=5,niter=100):
     #Put your code here
     # V represented predicted labels
     V = np.zeros(data.shape[0])
