@@ -229,9 +229,14 @@ def ML_model(username):
     ret_dict = {}
     ret_dict['handle'] = username
     ret_dict['mlrecommends'] = labels_city[idx]
+    ret_dict['user-signature'] = feature.T[0].tolist()
     ret_dict['similarity'] = {}
     for i, val in enumerate(rank):
-        ret_dict['similarity'][i] = {'city': rank[i], 'similarity-score' : distances[0,V[0,i]]}
+        ret_dict['similarity'][i] = {
+            'city': rank[i], 
+            'similarity-score' : distances[0,V[0,i]],
+            'city-signature' : label_avg[idx].tolist()
+            }
 
     print '>>>>>>>>>>>>>>>>>'
     ret_json = json.dumps(ret_dict,sort_keys=True)
