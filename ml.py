@@ -18,7 +18,7 @@ from sklearn.preprocessing import StandardScaler
 import glob
 import json
 from pprint import pprint
-from sklearn.lda import LDA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from mlcluster import kMeans
 import mlclassify as ml
 import time
